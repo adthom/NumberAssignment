@@ -16,21 +16,6 @@
         "description": "Location for all resources."
       }
     },
-    "sku": {
-      "type": "string",
-      "defaultValue": "Free",
-      "allowedValues": [
-        "pergb2018",
-        "Free",
-        "Standalone",
-        "PerNode",
-        "Standard",
-        "Premium"
-      ],
-      "metadata": {
-        "description": "Pricing tier: perGB2018 or legacy tiers (Free, Standalone, PerNode, Standard or Premium), which are not available to all customers."
-      }
-    },
     "PhoneNumberListAdminUPN": {
       "type": "string",
       "metadata": {
@@ -52,7 +37,13 @@
         "description": "SharePoint url to site collection containing the SharePoint List"
       }
     },
-
+    "baseTime": {
+      "type": "string",
+      "defaultValue": "[utcNow('u')]",
+      "metadata": {
+        "description": "DO NOT CHANGE"
+      }
+    },
     "samplePowerShellRunbookLocation": {
       "type": "string",
       "metadata": {
@@ -62,40 +53,16 @@
     }
   },
   "variables": {
-    //workspacename includes a unique string to minimize duplicate name errors.
-    "workspaceName": "[concat(parameters('baseResourceName'),uniqueString(parameters('baseResourceName')))]",
     "automationAccountName": "[concat(parameters('baseResourceName'),'Acct')]",
-    "serviceBusNamespaceName": "[concat(parameters('baseResourceName'),'SB')]",
-    "serviceBusQueueName": "batch",
-    "dataRetention": 7,
-    "_artifactsLocation": "[parameters('samplePowerShellRunbookLocation')]",
-    "defaultSASKeyName": "RootManageSharedAccessKey",
-    "authRuleResourceId": "[resourceId('Microsoft.ServiceBus/namespaces/authorizationRules', variables('serviceBusNamespaceName'), variables('defaultSASKeyName'))]"
+    "_artifactsLocation": "[parameters('samplePowerShellRunbookLocation')]"
   },
   "resources": [
-    {
-      "type": "Microsoft.OperationalInsights/workspaces",
-      "apiVersion": "2020-08-01",
-      "name": "[variables('workspaceName')]",
-      "location": "[parameters('location')]",
-      "properties": {
-        "sku": {
-          "name": "[parameters('sku')]"
-        },
-        "retentionInDays": "[variables('dataRetention')]",
-        "features": {
-          "searchVersion": 1,
-          "legacy": 0
-        }
-      }
-    },
     {
       "type": "Microsoft.Automation/automationAccounts",
       "apiVersion": "2019-06-01",
       "name": "[variables('automationAccountName')]",
       "location": "[parameters('location')]",
       "dependsOn": [
-        "[variables('workspaceName')]"
       ],
       "properties": {
         "sku": {
@@ -109,12 +76,12 @@
           "name": "NumberAssignment",
           "location": "[parameters('location')]",
           "dependsOn": [
-            "[variables('automationAccountName')]"
+            "[resourceId('Microsoft.Automation/automationAccounts', variables('automationAccountName'))]"
           ],
           "properties": {
             "runbookType": "PowerShell",
-            "logProgress": "false",
-            "logVerbose": "false",
+            "logProgress": false,
+            "logVerbose": false,
             "description": "Assign numbers to users pending assignment",
             "publishContentLink": {
               "uri": "[uri(variables('_artifactsLocation'), 'Scripts/NumberAssignment.ps1')]",
@@ -128,12 +95,12 @@
           "name": "NumberRemoval",
           "location": "[parameters('location')]",
           "dependsOn": [
-            "[variables('automationAccountName')]"
+            "[resourceId('Microsoft.Automation/automationAccounts', variables('automationAccountName'))]"
           ],
           "properties": {
             "runbookType": "PowerShell",
-            "logProgress": "false",
-            "logVerbose": "false",
+            "logProgress": false,
+            "logVerbose": false,
             "description": "Removes numbers that have been marked as available in list",
             "publishContentLink": {
               "uri": "[uri(variables('_artifactsLocation'), 'Scripts/NumberRemoval.ps1')]",
@@ -147,7 +114,7 @@
           "apiVersion": "2015-10-31",
           "location": "[parameters('location')]",
           "dependsOn": [
-            "[variables('automationAccountName')]"
+            "[resourceId('Microsoft.Automation/automationAccounts', variables('automationAccountName'))]"
           ],
           "properties": {
             "contentLink": {
@@ -161,7 +128,7 @@
           "apiVersion": "2015-10-31",
           "location": "[parameters('location')]",
           "dependsOn": [
-            "[variables('automationAccountName')]"
+            "[resourceId('Microsoft.Automation/automationAccounts', variables('automationAccountName'))]"
           ],
           "properties": {
             "contentLink": {
@@ -174,7 +141,7 @@
           "type": "credentials",
           "apiVersion": "2015-10-31",
           "dependsOn": [
-            "[variables('automationAccountName')]"
+            "[resourceId('Microsoft.Automation/automationAccounts', variables('automationAccountName'))]"
           ],
           "properties": {
             "userName": "[parameters('PhoneNumberListAdminUPN')]",
@@ -187,452 +154,80 @@
           "type": "variables",
           "apiVersion": "2015-10-31",
           "dependsOn": [
-            "[variables('automationAccountName')]"
+            "[resourceId('Microsoft.Automation/automationAccounts', variables('automationAccountName'))]"
           ],
           "properties": {
-            "value": "[parameters('SharePointUrl')]",
+            "value": "[concat('\"', parameters('SharePointUrl'), '\"')]",
             "description": "The base URL of the site collection containing the SharePoint List",
             "isEncrypted": false
           }
         },
         {
-            "type": "schedules",
-            "apiVersion": "2020-01-13-preview",
-            "name": "[concat(variables('automationAccountName'),'/Every 8 Hours')]",
-            "dependsOn": [
-                "[variables('automationAccountName')]"
-            ],
-            "properties": {
-                "startTime": "2021-05-16T01:00:00-04:00",
-                "expiryTime": "9999-12-31T18:59:00-05:00",
-                "interval": 8,
-                "frequency": "Hour",
-                "timeZone": "America/New_York"
-            }
-        },
-        {
-            "type": "schedules",
-            "apiVersion": "2020-01-13-preview",
-            "name": "[concat(variables('automationAccountName'),'/Every 8 Hours Early')]",
-            "dependsOn": [
-                "[variables('automationAccountName')]"
-            ],
-            "properties": {
-                "startTime": "2021-05-18T00:00:00-04:00",
-                "expiryTime": "9999-12-31T18:59:00-05:00",
-                "interval": 8,
-                "frequency": "Hour",
-                "timeZone": "America/New_York"
-            }
-        },
-        {
-            "type": "jobSchedules",
-            "apiVersion": "2020-01-13-preview",
-            "name": "[concat(variables('automationAccountName'),'/4372f7ab-fce8-46f9-bd2d-a28918755eed')]",
-            "dependsOn": [
-                "[variables('automationAccountName')]"
-            ],
-            "properties": {
-                "runbook": {
-                    "name": "NumberAssignment"
-                },
-                "schedule": {
-                    "name": "Every 8 Hours"
-                }
-            }
-        },
-        {
-            "type": "jobSchedules",
-            "apiVersion": "2020-01-13-preview",
-            "name": "[concat(variables('automationAccountName'),'/abc7ee44-be16-4ec9-8a78-a2f282f5f797')]",
-            "dependsOn": [
-                "[variables('automationAccountName')]"
-            ],
-            "properties": {
-                "runbook": {
-                    "name": "NumberRemoval"
-                },
-                "schedule": {
-                    "name": "Every 8 Hours Early"
-                }
-            }
-        }
-      ]
-    },
-    {
-      "type": "Microsoft.OperationalInsights/workspaces/linkedServices",
-      "apiVersion": "2020-08-01",
-      "name": "[concat(variables('workspaceName'), '/' , 'Automation')]",
-      "location": "[parameters('location')]",
-      "dependsOn": [
-        "[variables('workspaceName')]",
-        "[variables('automationAccountName')]"
-      ],
-      "properties": {
-        "resourceId": "[resourceId('Microsoft.Automation/automationAccounts', variables('automationAccountName'))]"
-      }
-    },
-    {
-      "apiVersion": "2017-04-01",
-      "name": "[variables('serviceBusNamespaceName')]",
-      "type": "Microsoft.ServiceBus/Namespaces",
-      "location": "[parameters('location')]",
-      "sku": {
-        "name": "Basic"
-      },
-      "properties": {},
-      "resources": [
-        {
-          "apiVersion": "2017-04-01",
-          "name": "[variables('serviceBusQueueName')]",
-          "type": "Queues",
+          "type": "schedules",
+          "apiVersion": "2020-01-13-preview",
+          "name": "Every 8 Hours",
           "dependsOn": [
-            "[concat('Microsoft.ServiceBus/namespaces/', variables('serviceBusNamespaceName'))]"
+            "[resourceId('Microsoft.Automation/automationAccounts', variables('automationAccountName'))]"
           ],
           "properties": {
-            "lockDuration": "PT5M",
-            "maxSizeInMegabytes": 1024,
-            "requiresDuplicateDetection": false,
-            "requiresSession": false,
-            "deadLetteringOnMessageExpiration": false,
-            "duplicateDetectionHistoryTimeWindow": "PT10M",
-            "maxDeliveryCount": 10,
-            "enablePartitioning": false,
-            "enableExpress": false
+            "startTime": "[dateTimeAdd(parameters('baseTime'), 'PT2H')]",
+            "expiryTime": "9999-12-31T18:59:00-05:00",
+            "interval": 8,
+            "frequency": "Hour",
+            "timeZone": "America/New_York"
           }
         },
         {
-          "apiVersion": "2017-04-01",
-          "name": "[variables('defaultSASKeyName')]",
-          "type": "authorizationRules",
+          "type": "schedules",
+          "apiVersion": "2020-01-13-preview",
+          "name": "Every 8 Hours Early",
           "dependsOn": [
-            "[concat('Microsoft.ServiceBus/namespaces/', variables('serviceBusNamespaceName'))]"
+            "[resourceId('Microsoft.Automation/automationAccounts', variables('automationAccountName'))]"
           ],
-          "location": "[parameters('location')]",
           "properties": {
-            "rights": [
-              "Listen",
-              "Manage",
-              "Send"
-            ]
+            "startTime": "[dateTimeAdd(parameters('baseTime'), 'PT1H')]",
+            "expiryTime": "9999-12-31T18:59:00-05:00",
+            "interval": 8,
+            "frequency": "Hour",
+            "timeZone": "America/New_York"
           }
-        }
-      ]
-    },
-    {
-      "type": "Microsoft.Web/connections",
-      "name": "servicebus",
-      "apiVersion": "2016-06-01",
-      "location": "[parameters('location')]",
-      "dependsOn": [
-        "[variables('authRuleResourceId')]"
-      ],
-      "properties": {
-        "displayName": "servicebus",
-        "customParameterValues": {},
-        "api": {
-          "id": "[concat('/subscriptions/',  subscription().subscriptionId, '/providers/Microsoft.Web/locations/', parameters('location') , '/managedApis/servicebus')]"
         },
-        "parameterValues": {
-          "connectionString": "[listKeys(variables('authRuleResourceId'), '2015-08-01').primaryConnectionString]"
-        }
-      }
-    },
-    {
-      "type": "Microsoft.Web/connections",
-      "name": "automationaccount",
-      "apiVersion": "2018-07-01-preview",
-      "location": "[parameters('location')]",
-      "dependsOn": [
-        "[resourceId('Microsoft.Automation/automationAccounts', variables('automationAccountName'))]"
-      ],
-      "properties": {
-        "displayName": "automationaccount",
-        "customParameterValues": {},
-        "api": {
-          "id": "[concat('/subscriptions/',  subscription().subscriptionId, '/providers/Microsoft.Web/locations/', parameters('location') , '/managedApis/azureautomation')]"
-        },
-        "parameterValues": {
-          "token:TenantId": "[subscription().tenantId]",
-          "token:clientId": "7ab7862c-4c57-491e-8a45-d52a7e023983",
-          "token:grantType": "client_credentials",
-          "token:clientSecret": "placeholder"
-        }
-      }
-    },
-    {
-      "properties": {
-        "state": "Enabled",
-        "definition": {
-          "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
-          "actions": {
-            "Condition": {
-              "type": "If",
-              "expression": {
-                "and": [
-                  {
-                    "startsWith": [
-                      "@trim(body('Get_job_output'))",
-                      "Success"
-                    ]
-                  }
-                ]
-              },
-              "actions": {
-                "For_each_2": {
-                  "type": "Foreach",
-                  "foreach": "@body('Get_messages_from_a_queue_(peek-lock)')",
-                  "actions": {
-                    "Complete_the_message_in_a_queue": {
-                      "type": "ApiConnection",
-                      "inputs": {
-                        "host": {
-                          "connection": {
-                            "name": "@parameters('$connections')['servicebus']['connectionId']"
-                          }
-                        },
-                        "method": "delete",
-                        "path": "/@{encodeURIComponent(encodeURIComponent('batch'))}/messages/complete",
-                        "queries": {
-                          "lockToken": "@items('For_each_2')?['LockToken']",
-                          "queueType": "Main",
-                          "sessionId": ""
-                        }
-                      },
-                      "runAfter": {}
-                    }
-                  },
-                  "runAfter": {}
-                }
-              },
-              "runAfter": {
-                "Get_job_output": [
-                  "Succeeded"
-                ]
-              },
-              "else": {
-                "actions": {
-                  "Compose_2": {
-                    "type": "Compose",
-                    "inputs": "placeholder for retry logic",
-                    "runAfter": {}
-                  }
-                }
-              }
+        {
+          "type": "jobSchedules",
+          "apiVersion": "2020-01-13-preview",
+          "name": "[guid(resourceGroup().id,'NumberAssignment')]",
+          "dependsOn": [
+            "[resourceId('Microsoft.Automation/automationAccounts', variables('automationAccountName'))]",
+            "[resourceId('Microsoft.Automation/automationAccounts/schedules', variables('automationAccountName'), 'Every 8 Hours')]",
+            "[resourceId('Microsoft.Automation/automationAccounts/runbooks', variables('automationAccountName'), 'NumberAssignment')]"
+          ],
+          "properties": {
+            "runbook": {
+              "name": "NumberAssignment"
             },
-            "Create_job": {
-              "type": "ApiConnection",
-              "inputs": {
-                "host": {
-                  "connection": {
-                    "name": "@parameters('$connections')['azureautomation']['connectionId']"
-                  }
-                },
-                "method": "put",
-                "body": {
-                  "properties": {
-                    "parameters": {
-                      "webhookdata": "@{outputs('batchusers')}"
-                    }
-                  }
-                },
-                "path": "[concat('/subscriptions/@{encodeURIComponent(''', subscription().subscriptionId,''')}/resourceGroups/@{encodeURIComponent(''',resourceGroup().name,''')}/providers/Microsoft.Automation/automationAccounts/@{encodeURIComponent(''',variables('automationAccountName'),''')}/jobs')]",
-                "queries": {
-                  "x-ms-api-version": "2015-10-31",
-                  "runbookName": "BatchUpgradeToTeamsOnly",
-                  "wait": true
-                }
-              },
-              "runAfter": {
-                "batchusers": [
-                  "Succeeded"
-                ]
-              },
-              "runtimeConfiguration": {
-                "staticResult": {
-                  "staticResultOptions": "Disabled",
-                  "name": "Create_job0"
-                }
-              }
-            },
-            "For_each": {
-              "type": "Foreach",
-              "foreach": "@body('Get_messages_from_a_queue_(peek-lock)')",
-              "actions": {
-                "Append_to_array_variable": {
-                  "type": "AppendToArrayVariable",
-                  "inputs": {
-                    "name": "Batchusers",
-                    "value": "@body('Parse_JSON')?['upn']"
-                  },
-                  "runAfter": {
-                    "Parse_JSON": [
-                      "Succeeded"
-                    ]
-                  }
-                },
-                "Compose": {
-                  "type": "Compose",
-                  "inputs": "@items('For_each')?['ContentData']",
-                  "runAfter": {}
-                },
-                "Parse_JSON": {
-                  "type": "ParseJson",
-                  "inputs": {
-                    "content": "@base64ToString(outputs('Compose'))",
-                    "schema": {
-                      "properties": {
-                        "upgradepolicy": {
-                          "type": "string"
-                        },
-                        "upn": {
-                          "type": "string"
-                        }
-                      },
-                      "type": "object"
-                    }
-                  },
-                  "runAfter": {
-                    "Compose": [
-                      "Succeeded"
-                    ]
-                  }
-                }
-              },
-              "runAfter": {
-                "Initialize_variable": [
-                  "Succeeded"
-                ]
-              }
-            },
-            "Get_job_output": {
-              "type": "ApiConnection",
-              "inputs": {
-                "host": {
-                  "connection": {
-                    "name": "@parameters('$connections')['azureautomation']['connectionId']"
-                  }
-                },
-                "method": "get",
-                "path": "[concat('/subscriptions/@{encodeURIComponent(''', subscription().id,''')}/resourceGroups/@{encodeURIComponent(''',resourceGroup().name,''')}/providers/Microsoft.Automation/automationAccounts/@{encodeURIComponent(''',variables('automationAccountName'),''')}/jobs/@{encodeURIComponent(body(''Create_job'')?[''properties'']?[''jobId''])}/output')]",
-                "queries": {
-                  "x-ms-api-version": "2015-10-31"
-                }
-              },
-              "runAfter": {
-                "Create_job": [
-                  "Succeeded"
-                ]
-              }
-            },
-            "Get_messages_from_a_queue_(peek-lock)": {
-              "type": "ApiConnection",
-              "inputs": {
-                "host": {
-                  "connection": {
-                    "name": "@parameters('$connections')['servicebus']['connectionId']"
-                  }
-                },
-                "method": "get",
-                "path": "/@{encodeURIComponent(encodeURIComponent('batch'))}/messages/batch/peek",
-                "queries": {
-                  "maxMessageCount": 175,
-                  "queueType": "Main"
-                }
-              },
-              "runAfter": {}
-            },
-            "Initialize_variable": {
-              "type": "InitializeVariable",
-              "inputs": {
-                "variables": [
-                  {
-                    "name": "Batchusers",
-                    "type": "array"
-                  }
-                ]
-              },
-              "runAfter": {
-                "Get_messages_from_a_queue_(peek-lock)": [
-                  "Succeeded"
-                ]
-              }
-            },
-            "batchusers": {
-              "type": "Compose",
-              "inputs": "@variables('Batchusers')",
-              "runAfter": {
-                "For_each": [
-                  "Succeeded"
-                ]
-              }
-            }
-          },
-          "parameters": {
-            "$connections": {
-              "defaultValue": {},
-              "type": "Object"
-            }
-          },
-          "triggers": {
-            "Recurrence": {
-              "type": "Recurrence",
-              "recurrence": {
-                "frequency": "Week",
-                "interval": 1,
-                "schedule": {
-                  "weekDays": [
-                    "Friday"
-                  ],
-                  "hours": [
-                    "18"
-                  ],
-                  "minutes": [
-                    0
-                  ]
-                }
-              }
-            }
-          },
-          "contentVersion": "1.0.0.0",
-          "outputs": {},
-          "staticResults": {
-            "Create_job0": {
-              "status": "Succeeded",
-              "outputs": {
-                "headers": {},
-                "statusCode": "OK"
-              }
+            "schedule": {
+              "name": "Every 8 Hours"
             }
           }
         },
-        "parameters": {
-          "$connections": {
-            "value": {
-              "servicebus": {
-                "id": "[concat(subscription().id, '/providers/Microsoft.Web/locations/',parameters('location'), '/managedApis/', 'servicebus')]",
-                "connectionId": "[resourceId('Microsoft.Web/connections', 'servicebus')]",
-                "connectionName": "servicebus"
-              },
-              "azureautomation": {
-                "id": "[concat(subscription().id, '/providers/Microsoft.Web/locations/', parameters('location'), '/managedApis/', 'azureautomation')]",
-                "connectionId": "[resourceId('Microsoft.Web/connections', 'automationaccount')]",
-                "connectionName": "automationaccount"
-              }
+        {
+          "type": "jobSchedules",
+          "apiVersion": "2020-01-13-preview",
+          "name": "[guid(resourceGroup().id,'NumberRemoval')]",
+          "dependsOn": [
+            "[resourceId('Microsoft.Automation/automationAccounts', variables('automationAccountName'))]",
+            "[resourceId('Microsoft.Automation/automationAccounts/schedules', variables('automationAccountName'), 'Every 8 Hours Early')]",
+            "[resourceId('Microsoft.Automation/automationAccounts/runbooks', variables('automationAccountName'), 'NumberRemoval')]"
+          ],
+          "properties": {
+            "runbook": {
+              "name": "NumberRemoval"
+            },
+            "schedule": {
+              "name": "Every 8 Hours Early"
             }
           }
         }
-      },
-      "name": "BatchProcessingSchedule",
-      "type": "Microsoft.Logic/workflows",
-      "location": "[parameters('location')]",
-      "tags": {
-        "displayName": "LogicApp"
-      },
-      "apiVersion": "2016-06-01",
-      "dependsOn": [
-        "[resourceId('Microsoft.Web/connections', 'servicebus')]",
-        "[resourceId('Microsoft.Web/connections', 'automationaccount')]"
       ]
     }
   ]

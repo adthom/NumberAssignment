@@ -27,6 +27,9 @@ TODO: Guide users through getting your code up and running on their own system. 
 ## Install the Runbook
 [![Deploy to Azure](https://aka.ms/deploytoazurebutton)](https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2Fadthom%2FNumberAssignment%2Fmain%2Fazuredeploy.json)
 
+## Deploy the List
+[Download the template](https://raw.githubusercontent.com/adthom/NumberAssignment/main/Template/PhoneNumberManagement.stp) and create a list in your SharePoint tenant from this List Template.
+
 ## Notes
 [Azure automation limits](https://docs.microsoft.com/en-us/azure/azure-resource-manager/management/azure-subscription-service-limits#automation-limits)
 
